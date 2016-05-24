@@ -108,7 +108,7 @@
 ! 8/5/2014 bug in eps (criteria changed), bug in rhs buildup with markers
 ! 6/1/2016 the program does not stop (but gives a warning) if there are more phenotypes than
 ! genotypes, in order to allow repeated records 
-
+! 24/5/2016 Bayes Factors for MCMCGBLUP models
 
 ! TODO
 ! modify guess of format so that we can include <50 SNPs
@@ -134,8 +134,8 @@ use aux_options
 
 
 implicit none
-character(20):: version= '2.4.0'
-character(20):: date='08 May 2014 '
+character(20):: version= '2.5.0'
+character(20):: date='24 May 2016 '
 integer,parameter::maxsnp=1000000
 ! parameters of the model
 integer:: neff,&
@@ -223,6 +223,13 @@ real(r8):: sumpq
 real(r8)::MisVal=-9999d0
 real:: aa(2)
 integer:: nmis=0,colweights=0
+
+! new variables for BayesFactor
+logical:: lBF=.false.
+integer:: nBF
+! at which points do we evaluate BF (fixed size windows)
+real(r8),allocatable:: covBF(:,:,:)
+
 
 call print_version()
 call get_command_argument(1,value=parfile,status=io)
@@ -928,13 +935,21 @@ outer: do iterout=beginouter,niter/thin
     if(.not.GaussSeidel) then
       if(iter>burnin)then
        sumsol=sumsol+sol
-       ssqsol=ssqsol+sol**2 
+       ssqsol=ssqsol+sol**2
        where(i_inmodel) avinmodel=avinmodel+1d0    
        sumpa=sumpa+pa
        sumpd=sumpd+pd
        sumtau2=sumtau2+tau2
        sstau2=sstau2+tau2**2
-
+       if(lBF) then
+       			pos1=add(efaSNP,1)
+                        ! covBF(i,j,k) contains, at the i marker, the covariance of markers i+j, i+k 
+                        do j=1,nBF
+                        	do k=1,nBF
+       					covBF(i,j,k)=covBF(i,j,k)+sol(pos1+j-1)*sol(pos1+k-1)
+       				enddo
+       			enddo
+       endif
       endif
     endif
     
@@ -1300,7 +1315,20 @@ if(ni>=1) then
         colweights=aa(2)
         fileweights=mes(1)
         print *,'OPTION Weights for SNPs in column ',colweights,' of file ',trim(adjustl(fileweights))
-endif        
+endif 
+
+call getoption_unit(10,'BayesFactor',n=ni,x=aa)
+if(ni>=1) then
+	lBF=.true.
+	nBF=(2)
+	allocate(covBF(nsnp,nBF,nBF))
+	covBF=0
+	print *,'BayesFactors  to windows from 1 up to of n consecutive SNPs: ',nBF
+else
+	lBF=.false.
+	nBF=1
+endif
+
 
 call is_there_a_mean()
 
