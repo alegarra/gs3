@@ -191,6 +191,8 @@ real(r8),allocatable::Z(:,:) !add_SNP effects
 type(sparse_hashm):: Ainv_hash                      
 type(sparse_ija):: Ainv_ija
 real(r8):: vara,vard,vare,varg,varp,lambda2
+real(r8):: svara,svard,svare,svarg,svarp,slambda2
+real(r8):: ssvara,ssvard,ssvare,ssvarg,ssvarp,sslambda2
 real(r8):: vara_ap,vard_ap,vare_ap,varg_ap,varp_ap ! apriori
 real(r8):: dfvara,dfvare,dfvard,dfvarg,dfvarp !degrees of freedom for the a priori distribution
 real(r8):: val,lhs,rhs,eps,conv_crit=1e-10,edc
@@ -221,12 +223,12 @@ integer:: saving=10000
 integer:: ip_snp
 real(r8):: sumpq
 real(r8)::MisVal=-9999d0
-real:: aa(2)
+real:: aa(20)
 integer:: nmis=0,colweights=0
 
 ! new variables for BayesFactor
 logical:: lBF=.false.
-integer:: nBF
+integer:: nBF,firstBF,lastBF
 ! at which points do we evaluate BF (fixed size windows)
 real(r8),allocatable:: covBF(:,:,:)
 
@@ -399,7 +401,13 @@ allocate( y(ndata),&
           sumtau2(neq),&
           sstau2(neq),&
           sol(neq) ) 
-          
+if(lBF) then
+	if(firstBF==0) firstBF=1
+	if(lastBF==0) lastBF=nsnp
+	print *,'Bayes Factor is computed from marker:',firstBF,'to marker',lastBF
+	allocate(covBF(firstBF:lastBF,0:nBF-1,0:nBF-1))
+	covBF=0
+endif
 X%cov=0d0; X%rec=0; X%eq=0
 y=0d0; ywiggle=0d0 ; phen=0d0
 sol=0d0
@@ -934,6 +942,18 @@ outer: do iterout=beginouter,niter/thin
 
     if(.not.GaussSeidel) then
       if(iter>burnin)then
+       svara=svara+vara
+       svard=svard+vard
+       svare=svare+vare
+       svarp=svarp+varp
+       svarg=svarp+varp
+       slambda2=slambda2+lambda2
+       ssvara=svara+vara**2
+       ssvard=svard+vard**2
+       ssvare=svare+vare**2
+       ssvarp=svarp+varp**2
+       ssvarg=svarg+varg**2
+       sslambda2=slambda2+lambda2**2
        sumsol=sumsol+sol
        ssqsol=ssqsol+sol**2
        where(i_inmodel) avinmodel=avinmodel+1d0    
@@ -942,13 +962,14 @@ outer: do iterout=beginouter,niter/thin
        sumtau2=sumtau2+tau2
        sstau2=sstau2+tau2**2
        if(lBF) then
-       			pos1=add(efaSNP,1)
-                        ! covBF(i,j,k) contains, at the i marker, the covariance of markers i+j, i+k 
-                        do j=1,nBF
-                        	do k=1,nBF
-       					covBF(i,j,k)=covBF(i,j,k)+sol(pos1+j-1)*sol(pos1+k-1)
-       				enddo
-       			enddo
+                ! covBF(i,j,k) contains, at the i marker, the covariance of markers i+j, i+k 
+       		do i=firstBF,lastBF-(nBF-1)
+			do j=0,nBF-1
+				do k=0,nBF-1
+					covBF(i,j,k)=covBF(i,j,k)+sol(add(efaSNP,i+j))*sol(add(efaSNP,i+k))
+				enddo
+			enddo
+		enddo
        endif
       endif
     endif
@@ -971,10 +992,57 @@ if(.not.GaussSeidel) then
   !sstau2 now contains the posterior sd. err. of the tau2
   tau2=sumtau2/(niter-burnin)
   sstau2=sqrt( sstau2/(niter-burnin) - tau2**2 )
+  !posterior means of variance components
+  vara=svara/(niter-burnin)
+  vard=svard/(niter-burnin)
+  varg=svarg/(niter-burnin)
+  vare=svare/(niter-burnin)
+  varp=svarp/(niter-burnin)
+  lambda2=slambda2/(niter-burnin)
+  pa=sumpa/(niter-burnin)
+  pd=sumpd/(niter-burnin)
+  ! and s.d.
+  sslambda2=sslambda2/(niter-burnin)-lambda2**2
+  ssvara=ssvara/(niter-burnin)-vara**2
+  ssvard=ssvard/(niter-burnin)-vard**2
+  ssvare=ssvare/(niter-burnin)-vare**2
+  ssvarp=ssvarp/(niter-burnin)-varp**2
+  ssvarg=ssvarg/(niter-burnin)-varg**2
+  open(unit=11,file=trim(adjustl(parfile))//'_finalEstimates',status='replace')
+  write (11,*) 'vara vard varp varg vare lambda2 pa(1) pd(1)'
+  write (11,*) 'posterior means'
+  write (11,*) vara, vard, varp, varg, vare, lambda2, pa(1), pd(1)
+  write (11,*) 'posterior s d'
+  write (11,*) sqrt(ssvara), sqrt(ssvard), sqrt(ssvarp), sqrt(ssvarg), sqrt(ssvare), sqrt(sslambda2)
+  close(11)
+
+  write (*,*) '--------------------------------'
+  write (*,*) 'Final Estimates'
+  write (*,*) 'vara vard varp varg vare lambda2 pa(1) pd(1)'
+  write (*,*) 'posterior means'
+  write (*,*) vara, vard, varp, varg, vare, lambda2, pa(1), pd(1)
+  write (*,*) 'posterior s d'
+  write (*,*) sqrt(ssvara), sqrt(ssvard), sqrt(ssvarp), sqrt(ssvarg), sqrt(ssvare), sqrt(sslambda2)
+  write (*,*) '--------------------------------'
+
   
   avinmodel=avinmodel/(niter-burnin)
-  sumpa=sumpa/(niter-burnin)
-  sumpd=sumpd/(niter-burnin)
+  if(lBF) then
+  	! compute average cross-product  
+  	covBF=covBF/(niter-burnin)
+	! covBF(i,j,k) contains, at the i marker, the covariance of markers i+j, i+k 
+  	! compute covariances across loci
+	do i=firstBF,lastBF-(nBF-1)
+		do j=0,nBF-1
+			do k=0,nBF-1
+				covBF(i,j,k)=covBF(i,j,k)  -sol(add(efaSNP,i+j))*sol(add(efaSNP,i+k))
+			enddo
+		enddo
+	enddo
+	call store_BF()
+  endif
+
+
 endif
 
 call store_solutions()
@@ -982,9 +1050,6 @@ call store_solutions()
 call transform_X(weights,"divide")
 call transform_yZW(weights,"divide")
 call compute_EBV()
-
-
-
 
 contains 
                       
@@ -1320,15 +1385,21 @@ endif
 call getoption_unit(10,'BayesFactor',n=ni,x=aa)
 if(ni>=1) then
 	lBF=.true.
-	nBF=(2)
-	allocate(covBF(nsnp,nBF,nBF))
-	covBF=0
+	nBF=aa(1)
 	print *,'BayesFactors  to windows from 1 up to of n consecutive SNPs: ',nBF
+	if(ni==3) then
+		! compute from markers firstBF to marker lastBF
+		firstBF=aa(2)
+		lastBF=aa(3)
+	else
+		! the 0 also works as a flag
+		firstBF=0
+		lastBF=0
+	endif
 else
 	lBF=.false.
 	nBF=1
 endif
-
 
 call is_there_a_mean()
 
@@ -1552,7 +1623,46 @@ end subroutine
   close(11)
   print*,'solutions stored in file: ',solfile
   end subroutine
-  
+
+  subroutine store_BF
+  integer i,j,k,l,off
+  real(r8),allocatable:: a(:),S(:,:)
+  real(r8):: logL1,logL0,BF
+  open(11,file=trim(adjustl(parfile))//'_BF',status='replace',recl=1000)
+  write(11,*)'i pos nBF BF logp0 logp1'
+  do l=1,nBF
+  	allocate(a(l),S(0:l-1,0:l-1))
+  	! off is the approximate offset of the marker in the center of the haplotype
+	! e.g., if nBF=4 -> off=2
+	!          nBF=5 -> off=3
+	! (I use the properties of the integer division in fortran)
+  	off=nBF/2 + 1
+	!p(0|0, I*vara)
+  	a=0
+  	S=0
+	do j=0,l-1
+		S(j,j)=1d0
+	enddo
+	S=S*vara
+	logL0=log_like_normal_matrix(a,S)
+  	do i=firstBF,lastBF-(nBF-1)
+  		! p(0|a_hat, cov(a_hat))
+  		a=sol(add(efaSNP,i):add(efaSNP,i+l))
+  		S=0
+		do j=0,l-1
+			do k=0,l-1
+				S(j,k)=covBF(i,j,k)
+			enddo
+		enddo
+		logL1=log_like_normal_matrix(a,S)
+		BF=logL0-logL1
+		write(11,'(3i10,10f12.7)')i,i+off,l,BF,logL0,logL1
+	enddo
+	deallocate(a,S)
+  enddo
+  close(11)
+  end subroutine
+
 subroutine restart_iter()
 ! read from continuation file
 implicit none
