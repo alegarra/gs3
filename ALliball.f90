@@ -10936,6 +10936,7 @@ end module statrank
 
 module stat
 use kinds
+use denseop
 contains
 
 ! ---------------------------
@@ -11111,6 +11112,23 @@ log_like_normal=-.5d0*size(e)*log(2d0*3.14159265d0*vare)-.5d0*dot_product(e,e)/v
 
 end function
 
+function log_like_normal_matrix(e,sigma)
+! log-likelihood of e~MVN(0,Sigma); Sigma is a matrix
+! includes degenerate cases where Sigma is s.p.d
+implicit none
+integer::n
+real(r8):: e(:),sigma(:,:),log_like_normal_matrix
+real(r8):: K(size(e),size(e)),eig(size(e))
+n=size(e)
+! det
+call eigen(sigma,eig,K)
+! create pseudo-inverse
+K=finverse_s(sigma)
+log_like_normal_matrix=-0.5d0*( &
+	sum(log(eig),mask=eig>0)+n*log(2*3.14150265d0)+dot_product(e,matmul(K,e)) &
+)
+
+end function
 
 function logdchisq(x,ndf) result (logl)!AL
 ! log-density of sample x in the chi squared distribution with df=ndf
