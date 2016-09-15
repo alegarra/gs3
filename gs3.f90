@@ -134,8 +134,8 @@ use aux_options
 
 
 implicit none
-character(20):: version= '2.5.0'
-character(20):: date='24 May 2016 '
+character(20):: version= '2.6.0'
+character(20):: date='15 september 2016 '
 integer,parameter::maxsnp=1000000
 ! parameters of the model
 integer:: neff,&
@@ -247,6 +247,8 @@ efaSNP=0
 efdSNP=0 
 efanim=0
 efp=0
+svara=0;svard=0;svare=0;svarg=0;svarp=0;slambda2=0;
+ssvara=0;ssvard=0;ssvare=0;ssvarg=0;ssvarp=0;sslambda2=0;
 
 call read_par_file()
 
@@ -1647,7 +1649,7 @@ end subroutine
 	logL0=log_like_normal_matrix(a,S)
   	do i=firstBF,lastBF-(nBF-1)
   		! p(0|a_hat, cov(a_hat))
-  		a=sol(add(efaSNP,i):add(efaSNP,i+l))
+  		a=sol(add(efaSNP,i):add(efaSNP,i+l-1))
   		S=0
 		do j=0,l-1
 			do k=0,l-1
