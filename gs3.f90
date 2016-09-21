@@ -13,9 +13,6 @@
 
 
 
-
-
-
 ! this is a program to estimate variances in a MM including
 ! mean, one fixed effect (gender) and SNP's
 ! THIS IS THE ONLY MODEL BY NOW!!
