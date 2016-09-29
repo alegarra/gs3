@@ -1624,18 +1624,18 @@ end subroutine
   end subroutine
 
   subroutine store_BF
-  integer i,j,k,l,off
+  integer i,j,k,l
   real(r8),allocatable:: a(:),S(:,:)
-  real(r8):: logL1,logL0,BF
+  real(r8):: logL1,logL0,BF,off
   open(11,file=trim(adjustl(parfile))//'_BF',status='replace',recl=1000)
   write(11,*)'i pos nBF BF logp0 logp1'
   do l=1,nBF
   	allocate(a(l),S(0:l-1,0:l-1))
   	! off is the approximate offset of the marker in the center of the haplotype
 	! e.g., if nBF=4 -> off=2
-	!          nBF=5 -> off=3
+	!          nBF=5 -> off=2.5
 	! (I use the properties of the integer division in fortran)
-  	off=nBF/2 + 1
+  	off=l/2.0
 	!p(0|0, I*vara)
   	a=0
   	S=0
@@ -1655,7 +1655,7 @@ end subroutine
 		enddo
 		logL1=log_like_normal_matrix(a,S)
 		BF=logL0-logL1
-		write(11,'(3i10,10f12.7)')i,i+off,l,BF,logL0,logL1
+		write(11,'(i,f10.4,i10,10f12.7)')i,i+off,l,BF,logL0,logL1
 	enddo
 	deallocate(a,S)
   enddo
