@@ -1635,7 +1635,7 @@ end subroutine
 	! e.g., if nBF=4 -> off=2
 	!          nBF=5 -> off=2.5
 	! (I use the properties of the integer division in fortran)
-  	off=l/2.0
+  	off=(l-1)/2.0
 	!p(0|0, I*vara)
   	a=0
   	S=0
