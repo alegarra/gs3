@@ -1655,7 +1655,7 @@ end subroutine
 		enddo
 		logL1=log_like_normal_matrix(a,S)
 		BF=logL0-logL1
-		write(11,'(i,f10.4,i10,10f12.7)')i,i+off,l,BF,logL0,logL1
+		write(11,'(i10,1x,f10.4,i10,10f12.7)')i,i+off,l,BF,logL0,logL1
 	enddo
 	deallocate(a,S)
   enddo
