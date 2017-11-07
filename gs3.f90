@@ -1629,7 +1629,7 @@ end subroutine
   real(r8),allocatable:: a(:),S(:,:)
   real(r8):: logL1,logL0,BF,off,df,x,pval,pvalF
   open(11,file=trim(adjustl(parfile))//'_BF',status='replace',recl=1000)
-  write(11,*)'i pos nBF BF logp0 logp1 chisq pvalchisq pvalF'
+  write(11,*)'i pos nBF BF logp0 logp1 chisq pvalchisq' ! 'pvalF'
   do l=1,nBF
   	allocate(a(l),S(0:l-1,0:l-1))
   	! off is the approximate offset of the marker in the center of the haplotype
@@ -1663,9 +1663,11 @@ end subroutine
         enddo
         df=l
         x=dot_product(a,matmul(finverse(S),a)) ! dont' use finverse_s as the tolerances are messed up !!!
+        ! because of montecarlo error in the estimate of S, it may happen to get x<0
+        if(x<0) x=0d0
         pval=1d0-chi_squared(x,df)
-        pvalF=1d0-ffprob(x/df,int(df),1000000)
-		write(11,'(i10,1x,f10.4,i10,10g20.10)')i,i+off,l,BF,logL0,logL1,x,pval,pvalF
+        !pvalF=1d0-ffprob(x/df,int(df),1000000)
+		write(11,'(i10,1x,f10.4,i10,10e20.12)')i,i+off,l,BF,logL0,logL1,x,pval !,pvalF
 	enddo
 	deallocate(a,S)
   enddo
