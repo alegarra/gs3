@@ -123,6 +123,7 @@ use boots
 use util
 use aux_options
 
+
 ! we parameterize the model in terms of an effect
 !   +1/2a for SNP 1
 !   -1/2a for SNP 2
@@ -1626,16 +1627,16 @@ end subroutine
   subroutine store_BF
   integer i,j,k,l
   real(r8),allocatable:: a(:),S(:,:)
-  real(r8):: logL1,logL0,BF,off
+  real(r8):: logL1,logL0,BF,off,df,x,pval,pvalF
   open(11,file=trim(adjustl(parfile))//'_BF',status='replace',recl=1000)
-  write(11,*)'i pos nBF BF logp0 logp1'
+  write(11,*)'i pos nBF BF logp0 logp1 chisq pvalchisq pvalF'
   do l=1,nBF
   	allocate(a(l),S(0:l-1,0:l-1))
   	! off is the approximate offset of the marker in the center of the haplotype
 	! e.g., if nBF=4 -> off=2
 	!          nBF=5 -> off=2.5
 	! (I use the properties of the integer division in fortran)
-  	off=(l-1)/2.0
+  	off=float(l-1)/2.0
 	!p(0|0, I*vara)
   	a=0
   	S=0
@@ -1655,7 +1656,16 @@ end subroutine
 		enddo
 		logL1=log_like_normal_matrix(a,S)
 		BF=logL0-logL1
-		write(11,'(i10,1x,f10.4,i10,10f12.7)')i,i+off,l,BF,logL0,logL1
+        ! compute frequentist statistics
+        S=-S
+        do j=0,l-1
+            S(j,j)=S(j,j)+vara
+        enddo
+        df=l
+        x=dot_product(a,matmul(finverse(S),a)) ! dont' use finverse_s as the tolerances are messed up !!!
+        pval=1d0-chi_squared(x,df)
+        pvalF=1d0-ffprob(x/df,int(df),1000000)
+		write(11,'(i10,1x,f10.4,i10,10g20.10)')i,i+off,l,BF,logL0,logL1,x,pval,pvalF
 	enddo
 	deallocate(a,S)
   enddo
