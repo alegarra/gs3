@@ -106,6 +106,7 @@
 ! 6/1/2016 the program does not stop (but gives a warning) if there are more phenotypes than
 ! genotypes, in order to allow repeated records 
 ! 24/5/2016 Bayes Factors for MCMCGBLUP models
+! 10/11/2017 use param file name when writing output files
 
 ! TODO
 ! modify guess of format so that we can include <50 SNPs
@@ -132,8 +133,8 @@ use aux_options
 
 
 implicit none
-character(20):: version= '2.6.0'
-character(20):: date='15 september 2016 '
+character(20):: version= '2.6.1'
+character(20):: date='10 november 2017'
 integer,parameter::maxsnp=1000000
 ! parameters of the model
 integer:: neff,&
@@ -267,7 +268,8 @@ open(unit=14,file=trim(parfile)//'_EBVs',status='replace')
 !prediction  
 if (predict) then
   open(unit=4,file=solfile,status='old')
-  open(unit=12,file='predictions',status='replace')  
+  ! open(unit=12,file='predictions',status='replace')  
+  open(unit=12,file=trim(parfile)//'_predictions',status='replace')
 endif  
 
 
@@ -595,7 +597,8 @@ do i=1,nsnp
         ! count of genotypes (2*genotyped individuals at that locus)
         (2d0*count(genotype(:,i)/=5))
 enddo
-open(unit=1001,file='freq',status="replace")
+! open(unit=1001,file='freq',status="replace")
+open(unit=1001,file=trim(parfile)//'_freq',status="replace")
 do i=1,nsnp
 	write(1001,*) freq(i)
 enddo
