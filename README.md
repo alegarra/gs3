@@ -26,9 +26,9 @@ Run `./compile.sh` to get help.
 Example: `./compile.sh gfortran`
 
 This will generate a binary named `gs3` in the current directory.
-Before using it on Windows, you should rename it as `gs3.exe`.
+Before using it on Windows, you should append `.exe`, that is rename it as `gs3.exe`.
 
-Older binaries can also be downloaded from [here](http://genoweb.toulouse.inra.fr/~alegarra/gs3_folder/).
+Otherwise, some binaries are directly available [here](https://github.com/alegarra/gs3/releases), and older binaries can also be downloaded from [there](http://genoweb.toulouse.inra.fr/~alegarra/gs3_folder/).
 
 
 ## Documentation
